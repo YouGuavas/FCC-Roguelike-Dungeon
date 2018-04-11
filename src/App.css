@@ -28,7 +28,14 @@
   border: 1px solid black;
 }
 .player {
+  height:10px;
+  width: 10px;
   background-color: gold;
+}
+.enemy {
+  height:10px;
+  width: 10px;
+  background-color: red;
 }
 .HUD {
   width: 100%;
