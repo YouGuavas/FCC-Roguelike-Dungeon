@@ -48,5 +48,6 @@ li {
     display: inline-block;
     margin-right:3px;
     border-right:1px solid black;
+    padding:3px;
 }
 
