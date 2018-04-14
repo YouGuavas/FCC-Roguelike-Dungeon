@@ -31,7 +31,7 @@ const weapons = [
 		attack: 29
 	}
 ];
-
+let occupied = {};
 
 export class Game extends Component {
 	updateStats(stats) {
@@ -60,18 +60,22 @@ export class Game extends Component {
 		switch (e.keyCode) {
 			case 65:
 			case 37:
+				e.preventDefault();
 				console.log('left');
 				break;
 			case 87:
 			case 38:
+				e.preventDefault();
 				console.log('up');
 				break;
 			case 68:
 			case 39:
+				e.preventDefault();
 				console.log('right');
 				break;
 			case 83:
 			case 40:
+				e.preventDefault();
 				console.log('down');
 				break;
 			default:
@@ -80,11 +84,25 @@ export class Game extends Component {
 		}
 	}
 	drawBoard() {
+		const types = {'player': '#FF0000', 'item': 'green', 'boss': 'purple', 'enemy': 'blue'};
 		const canvas = document.getElementById("canvas");
 		const cont = canvas.getContext('2d');
-		cont.fillStyle = "#FF0000";
-		cont.fillRect(Math.floor(Math.random()*300), Math.random(Math.random()*500), 5,3);
+		let x;
+		let y;
+		for (let i = 0; i < Object.keys(types).length; i++) {
+			while(Object.keys(occupied).indexOf(`${x}x${y}`) !== -1) {
+				x = Math.floor(Math.random() * 200);
+				y = Math.floor(Math.random() * 200);
+			};
+			occupied[`${x}x${y}`] = Object.keys(types)[i];
+			occupied[`${x+5}x${y}`] = Object.keys(types)[i];
+			occupied[`${x}x${y+3}`] = Object.keys(types)[i];
+			occupied[`${x+5}x${y+3}`] = Object.keys(types)[i];
+			cont.fillStyle = types[Object.keys(types)[i]];
+			cont.fillRect(x, y, 5,3);
+		}
 	}
+	
 	componentDidMount() {
 		this.drawBoard();
 		window.addEventListener('keydown', this.handleMove);
@@ -120,7 +138,11 @@ class StatBar extends Component {
 			<ul className="HUD">
 			{
 				stats.map((ele) => {
-				return <li key={stats.indexOf(ele)}><strong>{ele[0] + ': '}</strong> {ele[1]}</li>
+					if (ele[0] !== 'Exp') {
+						return <li key={stats.indexOf(ele)}><strong>{ele[0] + ': '}</strong> {ele[1]}</li>
+					} else {
+						return <li key={stats.indexOf(ele)}><strong>{ele[0] + ': '}</strong> {ele[1] + ' (Exp to level: ' + (this.props.stats.level*10 - ele[1]) + ')'}</li>
+					}
 			})}
 			</ul>
 			)
