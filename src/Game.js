@@ -42,22 +42,26 @@ export class Game extends Component {
 		});
 	}
 	gainExp(next, callback) {
+		const oldLevel = this.state.level;
 		this.setState({
 			xp: this.state.xp + next
 		}, () => {
-			if (this.state.xp >= this.state.level*10) {
+			if (this.state.xp >= this.state.level*20) {
 				this.setState({
-					level: this.state.level + Math.floor(this.state.xp/(this.state.level*10)),
-					baseHealth: this.state.baseHealth + Math.floor(this.state.xp/(this.state.level*11)*10),
-					baseAttack: this.state.baseAttack + 2,
-					xp:0
+					level: this.state.level + Math.floor(this.state.xp/(this.state.level*20)),
+					xp:0 + this.state.xp - this.state.level*20
 				}, () => {
-					this.setState({
-						playerHealth: this.state.baseHealth,
-						attack: this.state.baseAttack + this.state.itemAttack
-					});
+						this.setState({
+							baseHealth: this.state.baseHealth + Math.floor(0.1*this.state.baseHealth) * (this.state.level - oldLevel),
+							baseAttack: this.state.baseAttack + Math.floor(0.5*this.state.baseAttack) + 2 * (this.state.level - oldLevel)
+						}, () => {
+								this.setState({
+									playerHealth: this.state.baseHealth,
+									attack: this.state.baseAttack + this.state.itemAttack
+								})
+						});
 				});
-			}
+			};
 		});
 		callback();
 	}
@@ -68,33 +72,58 @@ export class Game extends Component {
 			itemAttack: weapons[this.state.floor-1].attack
 		});
 	}
+	resetBoard = () => {
+		this.setState({
+			level: 1,
+			baseHealth: 100,
+			playerHealth: 100,
+			baseAttack:1,
+			itemAttack: 0,
+			attack: 1,
+			weapon: 'A tattered paperback',
+			floor: 1,
+			xp: 0,
+			boardD: {x: 200, y: 150},
+			playerPos: {x: 0, y:0},
+			entitySize: {x: 6, y: 4},
+		}, () => {
+			this.drawBoard();
+		});
+	}
 	handleMove(e) {
 		const battle = (pos) => {
-			const enemyAttack = Math.floor(Math.random() * 1.5*entityPos[pos].attack);
-			const myAttack = Math.floor(Math.random() * 1.5*this.state.attack);
+			const enemyAttack = Math.floor(Math.random() * (1.5*entityPos[pos].attack - entityPos[pos].attack)) + entityPos[pos].attack;
+			const myAttack = Math.floor(Math.random() * (1.5*this.state.attack - this.state.attack)) + this.state.attack;
 			const enemyHealth = entityPos[pos].health -= myAttack;
-			if (enemyHealth > 0) {
+			if (this.state.playerHealth - enemyAttack > 0) {
 				this.setState({
 					playerHealth: this.state.playerHealth - enemyAttack
 				});
-			} else {
-				if (entityPos[pos].type === 'enemy') {
-					this.gainExp(entityPos[pos].xp, () => { 
-						delete entityPos[pos]
-					});
-					return 'win';
-				} else {
-					this.setState({
-						floor: this.state.floor + 1
-					}, () => {
-						this.gainExp(entityPos[pos].xp, () => {
+				if (enemyHealth <= 0) {
+					if (entityPos[pos].type === 'enemy') {
+						this.gainExp(entityPos[pos].xp, () => { 
 							delete entityPos[pos]
 						});
-						occupied = {};
-						entityPos = {};
-						this.drawBoard();
-					});
+						return 'win';
+					} else {
+						this.setState({
+							floor: this.state.floor + 1
+						}, () => {
+							this.gainExp(entityPos[pos].xp, () => {
+								delete entityPos[pos]
+							});
+							occupied = {};
+							entityPos = {};
+							this.setState({
+								playerHealth: this.state.baseHealth
+							}, () => {
+								this.drawBoard();
+							});
+						});
+					}
 				}
+			} else {
+				this.resetBoard();
 			}
 		}
 		const testNext = (x,y,x2,y2) => {
@@ -169,7 +198,7 @@ export class Game extends Component {
 				}
 				break;
 			default:
-				this.gainExp(3);
+				this.gainExp(20, () => { return null; });
 				break;	
 		}
 	}
@@ -182,7 +211,7 @@ export class Game extends Component {
 		x *= this.state.entitySize.x;
 		let y = Math.floor(Math.random() * (this.state.boardD.y/this.state.entitySize.y));
 		y *= this.state.entitySize.y;
-		//establish a 
+		//establish a "grid" for player, items, enemies to spawn on
 		this.setState({
 			playerPos: {x, y}
 		}, () => {
@@ -190,26 +219,30 @@ export class Game extends Component {
 				const type = Object.keys(types)[i];
 				const color = types[type][0];
 				const number = types[type][1];
-				for (let j = 0; j < number; j++) {
-					while(Object.keys(occupied).indexOf(`${x}x${y}`) !== -1) {
-						x = Math.floor(Math.random() * (this.state.boardD.x/this.state.entitySize.x));
-						x *= this.state.entitySize.x;
-						y = Math.floor(Math.random() * (this.state.boardD.y/this.state.entitySize.y));
-						y *= this.state.entitySize.y;
-					};
-					occupied[`${x}x${y}`] = type;
-					if (type !== 'player') {
-						entityPos[`${x}x${y}`] = {type: type, 
-							health: type === 'enemy' ? this.state.floor * 10 : type === 'boss' ? this.state.floor*30 : 0,
-							attack: type === 'enemy' ? this.state.floor*3 : type === 'boss' ? this.state.floor*3 : 0,
-							xp: type === 'enemy' ? this.state.floor*4 : type === 'boss' ? this.state.floor*10 : 0
+				if (type === 'item' && this.state.floor > weapons.length) {
+					null;
+				} else {
+					for (let j = 0; j < number; j++) {
+						while(Object.keys(occupied).indexOf(`${x}x${y}`) !== -1) {
+							x = Math.floor(Math.random() * (this.state.boardD.x/this.state.entitySize.x));
+							x *= this.state.entitySize.x;
+							y = Math.floor(Math.random() * (this.state.boardD.y/this.state.entitySize.y));
+							y *= this.state.entitySize.y;
 						};
+						occupied[`${x}x${y}`] = type;
+						if (type !== 'player') {
+							entityPos[`${x}x${y}`] = {type: type, 
+								health: type === 'enemy' ? this.state.floor * 10 : type === 'boss' ? this.state.floor*30 : 0,
+								attack: type === 'enemy' ? this.state.floor*3 : type === 'boss' ? this.state.floor*3 : 0,
+								xp: type === 'enemy' ? this.state.floor*4 : type === 'boss' ? this.state.floor*10 : 0
+							};
+						}
+						occupied[`${x+this.state.entitySize.x}x${y}`] = type;
+						occupied[`${x}x${y+this.state.entitySize.y}`] = type;
+						occupied[`${x+this.state.entitySize.x}x${y+this.state.entitySize.y}`] = type;
+						cont.fillStyle = color;
+						cont.fillRect(x, y, this.state.entitySize.x,this.state.entitySize.y);
 					}
-					occupied[`${x+this.state.entitySize.x}x${y}`] = type;
-					occupied[`${x}x${y+this.state.entitySize.y}`] = type;
-					occupied[`${x+this.state.entitySize.x}x${y+this.state.entitySize.y}`] = type;
-					cont.fillStyle = color;
-					cont.fillRect(x, y, this.state.entitySize.x,this.state.entitySize.y);
 				}
 			}
 			console.log(entityPos);
@@ -259,7 +292,7 @@ class StatBar extends Component {
 					if (ele[0] !== 'Exp') {
 						return <li key={stats.indexOf(ele)}><strong>{ele[0] + ': '}</strong> {ele[1]}</li>
 					} else {
-						return <li key={stats.indexOf(ele)}><strong>{ele[0] + ': '}</strong> {ele[1] + ' (Exp to level: ' + (this.props.stats.level*10 - ele[1]) + ')'}</li>
+						return <li key={stats.indexOf(ele)}><strong>{ele[0] + ': '}</strong> {ele[1] + ' (Exp to level: ' + (this.props.stats.level*20 - ele[1]) + ')'}</li>
 					}
 			})}
 			</ul>
