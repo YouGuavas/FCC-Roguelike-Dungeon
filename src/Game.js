@@ -43,17 +43,34 @@ export class Game extends Component {
 	}
 	gainExp(next, callback) {
 		const oldLevel = this.state.level;
+		const levelUp = (xp) => {
+			let level = this.state.level+1;
+			let leftovers = xp - (this.state.level*20)
+			let baseHealth = this.state.baseHealth + Math.floor(0.1*this.state.baseHealth);
+			let baseAttack = this.state.baseAttack + Math.floor(0.05*this.state.baseAttack) + 2;
+			while (leftovers >= level*20) {
+				leftovers = leftovers - (level*20);
+				baseHealth += Math.floor(0.1*baseHealth);
+				baseAttack += Math.floor(0.5*baseAttack) + 2;
+				level += 1;
+			}
+
+			return [level, leftovers, baseHealth, baseAttack];
+		}
 		this.setState({
 			xp: this.state.xp + next
 		}, () => {
 			if (this.state.xp >= this.state.level*20) {
+				const levels = levelUp(this.state.xp);
 				this.setState({
-					level: this.state.level + Math.floor(this.state.xp/(this.state.level*20)),
-					xp:0 + this.state.xp - this.state.level*20
+					level: levels[0],
+					xp: levels[1]
+					//leftover xp carries over
 				}, () => {
 						this.setState({
-							baseHealth: this.state.baseHealth + Math.floor(0.1*this.state.baseHealth) * (this.state.level - oldLevel),
-							baseAttack: this.state.baseAttack + Math.floor(0.5*this.state.baseAttack) + 2 * (this.state.level - oldLevel)
+							baseHealth: levels[2],
+							baseAttack: levels[3]
+							//this math is a bit not as intended, but I figured it shouldn't matter in this case, because in most situations in the game, player won't level more than once at a time
 						}, () => {
 								this.setState({
 									playerHealth: this.state.baseHealth,
@@ -96,16 +113,21 @@ export class Game extends Component {
 			const myAttack = Math.floor(Math.random() * (1.5*this.state.attack - this.state.attack)) + this.state.attack;
 			const enemyHealth = entityPos[pos].health -= myAttack;
 			if (this.state.playerHealth - enemyAttack > 0) {
+				//check if player is still alive
 				this.setState({
+					//if so, reduce health by "random" enemy attack amount
 					playerHealth: this.state.playerHealth - enemyAttack
 				});
 				if (enemyHealth <= 0) {
+					//check if enemy is still alive
 					if (entityPos[pos].type === 'enemy') {
+						//if not, and if enemy is not a boss, gain exp and proceed
 						this.gainExp(entityPos[pos].xp, () => { 
 							delete entityPos[pos]
 						});
 						return 'win';
 					} else {
+						//if you have killed a boss, gain xp and advance to the next floor
 						this.setState({
 							floor: this.state.floor + 1
 						}, () => {
@@ -198,7 +220,7 @@ export class Game extends Component {
 				}
 				break;
 			default:
-				this.gainExp(20, () => { return null; });
+				this.gainExp(200, () => { return null; });
 				break;	
 		}
 	}
