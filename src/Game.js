@@ -1,4 +1,8 @@
 import React, { Component } from 'react';
+import wizard from './wizard.svg';
+import goblin from './goblin.svg';
+import dragon from './dragon.svg';
+import spellbook from './spellbook.svg';
 const weapons = [
 	{
 		itemName: 'Forsaken Manual',
@@ -42,7 +46,6 @@ export class Game extends Component {
 		});
 	}
 	gainExp(next, callback) {
-		const oldLevel = this.state.level;
 		const levelUp = (xp) => {
 			let level = this.state.level+1;
 			let leftovers = xp - (this.state.level*20)
@@ -100,9 +103,7 @@ export class Game extends Component {
 			weapon: 'A tattered paperback',
 			floor: 1,
 			xp: 0,
-			boardD: {x: 200, y: 150},
-			playerPos: {x: 0, y:0},
-			entitySize: {x: 6, y: 4},
+			playerPos: {x: 0, y:0}
 		}, () => {
 			this.drawBoard();
 		});
@@ -149,39 +150,42 @@ export class Game extends Component {
 			}
 		}
 		const testNext = (x,y,x2,y2) => {
-			if (Object.keys(entityPos).indexOf(`${x2}x${y2}`) === -1) {
-				//If new position is not occupied, move
-				cont.clearRect(x, y, width, height);
-				cont.fillRect(x2, y2, width, height);
-				this.setState({
-					playerPos: {x:x2, y: y2}
-				});
-			} else if (entityPos[`${x2}x${y2}`].type === "item") {
-				//If new position is occupied by an item, pick it up and move on
-				cont.clearRect(x, y, width,height);
-				cont.fillRect(x2, y2, width,height);
-				delete entityPos[`${x2}x${y2}`];
-				this.setState({
-					playerPos: {x:x2, y:y2}
-				}, () => {
-					this.getItem();
-				});
-			} else {
-				//If new position is occupied by a boss or other enemy, battle it
-				if (battle(`${x2}x${y2}`) === 'win') {
+			const img = new Image();
+			img.onload = () => {
+				if (Object.keys(entityPos).indexOf(`${x2}x${y2}`) === -1) {
+					//If new position is not occupied, move
 					cont.clearRect(x, y, width, height);
-					cont.fillRect(x2, y2, width, height);
+					cont.drawImage(img, x2, y2, width, height);
 					this.setState({
 						playerPos: {x:x2, y: y2}
 					});
-				};
+				} else if (entityPos[`${x2}x${y2}`].type === "item") {
+					//If new position is occupied by an item, pick it up and move on
+					cont.clearRect(x, y, width,height);
+					cont.drawImage(img, x2, y2, width,height);
+					delete entityPos[`${x2}x${y2}`];
+					this.setState({
+						playerPos: {x:x2, y:y2}
+					}, () => {
+						this.getItem();
+					});
+				} else {
+					//If new position is occupied by a boss or other enemy, battle it
+					if (battle(`${x2}x${y2}`) === 'win') {
+						cont.clearRect(x, y, width, height);
+						cont.drawImage(img, x2, y2, width, height);
+						this.setState({
+							playerPos: {x:x2, y: y2}
+						});
+					};
+				}
 			}
+			img.src = wizard;
 		}
 		const height = this.state.entitySize.y;
 		const width = this.state.entitySize.x;
 		const canvas = document.getElementById("canvas");
 		const cont = canvas.getContext('2d');
-		cont.fillStyle = 'red';
 		switch (e.keyCode) {
 			case 65:
 			case 37:
@@ -225,50 +229,72 @@ export class Game extends Component {
 		}
 	}
 	drawBoard = () => {
-		const types = {'player': ['#FF0000', 1], 'item': ['green', 1], 'boss': ['purple', 1], 'enemy': ['blue', 3]};
-		const canvas = document.getElementById("canvas");
-		const cont = canvas.getContext('2d');
-		cont.clearRect(0, 0, canvas.width, canvas.height);
-		let x = Math.floor(Math.random() * (this.state.boardD.x/this.state.entitySize.x));
-		x *= this.state.entitySize.x;
-		let y = Math.floor(Math.random() * (this.state.boardD.y/this.state.entitySize.y));
-		y *= this.state.entitySize.y;
-		//establish a "grid" for player, items, enemies to spawn on
-		this.setState({
-			playerPos: {x, y}
-		}, () => {
-			for (let i = 0; i < Object.keys(types).length; i++) {
-				const type = Object.keys(types)[i];
-				const color = types[type][0];
-				const number = types[type][1];
-				if (type === 'item' && this.state.floor > weapons.length) {
-					null;
-				} else {
-					for (let j = 0; j < number; j++) {
-						while(Object.keys(occupied).indexOf(`${x}x${y}`) !== -1) {
-							x = Math.floor(Math.random() * (this.state.boardD.x/this.state.entitySize.x));
-							x *= this.state.entitySize.x;
-							y = Math.floor(Math.random() * (this.state.boardD.y/this.state.entitySize.y));
-							y *= this.state.entitySize.y;
-						};
-						occupied[`${x}x${y}`] = type;
-						if (type !== 'player') {
-							entityPos[`${x}x${y}`] = {type: type, 
-								health: type === 'enemy' ? this.state.floor * 10 : type === 'boss' ? this.state.floor*30 : 0,
-								attack: type === 'enemy' ? this.state.floor*3 : type === 'boss' ? this.state.floor*3 : 0,
-								xp: type === 'enemy' ? this.state.floor*4 : type === 'boss' ? this.state.floor*10 : 0
-							};
+		const img = new Image(); 
+		img.onload = () => {
+			const types = {'player': [wizard, 1], 'item': [spellbook, 1], 'boss': [dragon, 1], 'enemy': [goblin, 3]};
+			let sprites = [];
+			const canvas = document.getElementById("canvas");
+			const cont = canvas.getContext('2d');
+
+			const loadImgs = (type, x, y) => {
+				if (type !== 'player') {
+					const image = new Image();
+					//sprites.push(image);
+					image.onload = () => {
+							cont.drawImage(image, x, y, this.state.entitySize.x, this.state.entitySize.y);
+					}
+					occupied[`${x}x${y}`] = type;
+					occupied[`${x+this.state.entitySize.x}x${y}`] = type;
+					occupied[`${x}x${y+this.state.entitySize.y}`] = type;
+					occupied[`${x+this.state.entitySize.x}x${y+this.state.entitySize.y}`] = type;
+					entityPos[`${x}x${y}`] = {type: type, 
+							health: type === 'enemy' ? this.state.floor * 10 : type === 'boss' ? this.state.floor*30 : 0,
+							attack: type === 'enemy' ? this.state.floor*3 : type === 'boss' ? this.state.floor*3 : 0,
+							xp: type === 'enemy' ? this.state.floor*4 : type === 'boss' ? this.state.floor*10 : 0
 						}
-						occupied[`${x+this.state.entitySize.x}x${y}`] = type;
-						occupied[`${x}x${y+this.state.entitySize.y}`] = type;
-						occupied[`${x+this.state.entitySize.x}x${y+this.state.entitySize.y}`] = type;
-						cont.fillStyle = color;
-						cont.fillRect(x, y, this.state.entitySize.x,this.state.entitySize.y);
+						image.src = types[type][0];
+					}
+			}
+
+			cont.clearRect(0, 0, canvas.width, canvas.height);
+			let x = Math.floor(Math.random() * (this.state.boardD.x/this.state.entitySize.x));
+			x *= this.state.entitySize.x;
+			let y = Math.floor(Math.random() * (this.state.boardD.y/this.state.entitySize.y));
+			y *= this.state.entitySize.y;
+			cont.drawImage(img, x, y, this.state.entitySize.x, this.state.entitySize.y);
+			//establish a "grid" for player, items, enemies to spawn on
+			this.setState({
+				playerPos: {x, y}
+			}, () => {
+				for (let i = 0; i < Object.keys(types).length; i++) {
+					const type = Object.keys(types)[i];
+					const number = types[type][1];
+					occupied[`${x}x${y}`] = type;
+					occupied[`${x+this.state.entitySize.x}x${y}`] = type;
+					occupied[`${x}x${y+this.state.entitySize.y}`] = type;
+					occupied[`${x+this.state.entitySize.x}x${y+this.state.entitySize.y}`] = type;
+					if (type === 'item' && this.state.floor > weapons.length) {
+						null;
+					} else {
+						for (let j = 0; j < number; j++) {
+							while(Object.keys(occupied).indexOf(`${x}x${y}`) !== -1) {
+								x = Math.floor(Math.random() * (this.state.boardD.x/this.state.entitySize.x));
+								x *= this.state.entitySize.x;
+								y = Math.floor(Math.random() * (this.state.boardD.y/this.state.entitySize.y));
+								y *= this.state.entitySize.y;
+							};
+							loadImgs(type, x, y);
+							//alert(x, y);
+						}
+						for(let j = 0; j < sprites.length; j++) {
+							cont.drawImage(sprites[j], x, y, this.state.entitySize.x, this.state.entitySize.y);
+						}
 					}
 				}
-			}
-			console.log(entityPos);
-		});
+			});
+			console.log(sprites);
+		}
+		img.src = wizard;
 	}
 	
 	componentDidMount() {
@@ -289,7 +315,7 @@ export class Game extends Component {
 			xp: 0,
 			boardD: {x: 200, y: 150},
 			playerPos: {x: 0, y:0},
-			entitySize: {x: 6, y: 4},
+			entitySize: {x: 20, y: 15},
 		}
 		this.updateStats = this.updateStats.bind(this);
 		this.handleMove = this.handleMove.bind(this);
@@ -298,9 +324,25 @@ export class Game extends Component {
 	render() {
 		return(
 			<section className="gameBoard">
-				<StatBar stats={{floor: this.state.floor,level: this.state.level, health: this.state.playerHealth, weapon:this.state.weapon, attack:this.state.attack, xp:this.state.xp}} />
+				<StatBar stats={{floor: this.state.floor,level: this.state.level, health: this.state.playerHealth, baseHealth:this.state.baseHealth, weapon:this.state.weapon, attack:this.state.attack, xp:this.state.xp}} />
 				<canvas className="gameBoard" id="canvas"></canvas>
 			</section>
+			)
+	}
+}
+class HealthBar extends Component {
+	render() {
+		const width = 50;
+		let color;
+		if (this.props.width <= .3) {
+			color = 'red';
+		} else {
+			color = 'green';
+		}
+		return(
+			<div className='hbC' style={{width}}>
+				<div className='hbI' style={{width:this.props.width*width, backgroundColor:color}}></div>
+			</div>
 			)
 	}
 }
@@ -311,10 +353,12 @@ class StatBar extends Component {
 			<ul className="HUD">
 			{
 				stats.map((ele) => {
-					if (ele[0] !== 'Exp') {
+					if (ele[0] !== 'Exp' && ele[0] !== 'Health') {
 						return <li key={stats.indexOf(ele)}><strong>{ele[0] + ': '}</strong> {ele[1]}</li>
-					} else {
-						return <li key={stats.indexOf(ele)}><strong>{ele[0] + ': '}</strong> {ele[1] + ' (Exp to level: ' + (this.props.stats.level*20 - ele[1]) + ')'}</li>
+					} else if (ele[0] === 'Health') {
+						return <li key={stats.indexOf(ele)}><strong>{ele[0] + ': '}</strong><HealthBar width={ele[1]/this.props.stats.baseHealth}/></li>
+					}else {
+						return <li key={stats.indexOf(ele)}><strong>{ele[0] + ' Left: '}</strong> {(this.props.stats.level*20 - ele[1])}</li>
 					}
 			})}
 			</ul>

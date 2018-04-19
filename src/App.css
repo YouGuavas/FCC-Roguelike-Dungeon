@@ -44,6 +44,15 @@
   padding: 0;
   text-align: left;
 }
+.hbC {
+  height:9px;
+  border:1px solid black;
+  display: inline-block;
+  border-radius:10%;
+}
+.hbI {
+  height: 100%;
+}
 li {
     display: inline-block;
     margin-right:3px;
